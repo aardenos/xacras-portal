@@ -269,7 +269,7 @@
     });
 
     window.addEventListener("keydown", (detail) => {
-      try { window.top.Device.signal("keydown", detail); } catch (_) {}
+      window.top.Device.signal("keydown", detail);
     });
 
     Object.assign(canvas, {
@@ -295,88 +295,80 @@
     updateHUD();
     render();
 
+    
+// === BEGIN Touch Relay (with skipZoomFrames) ===
+(function setupTouchRelay() {
+  let initialDistance = null;
+  let initialCenter = null;
+  canvas._2fingerStart = null;
+  canvas._skipZoomFrames = 12;
 
-    // === Touch Relay ===========================================================
-    (function setupTouchRelay() {
-      let initialDistance = null;
-      let initialCenter   = null;
-      let zoomEndTime     = null;
-      let lastTouchCount  = 0;
-      const PAN_RESUME_DELAY = 180;
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      initialDistance = Math.hypot(dx, dy);
+      initialCenter = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+      };
+      canvas._2fingerStart = null;
+    } else if (e.touches.length === 1) {
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      isPanning = true;
+      canvas.style.cursor = "grabbing";
+    }
+  }, { passive: true });
 
-      canvas.addEventListener("touchstart", (e) => {
-        lastTouchCount = e.touches.length;
+  canvas.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2 && initialDistance !== null) {
+      if (canvas._2fingerStart === null) {
+        canvas._2fingerStart = 0;
+        return;
+      } else if (typeof canvas._2fingerStart === "number") {
+        canvas._2fingerStart++;
+        if (canvas._2fingerStart < canvas._skipZoomFrames) return;
+      }
 
-        if (e.touches.length === 2) {
-          isPanning       = false;
-          const dx        = e.touches[0].clientX - e.touches[1].clientX;
-          const dy        = e.touches[0].clientY - e.touches[1].clientY;
-          initialDistance = Math.hypot(dx, dy);
-          initialCenter   = {
-            x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-            y: (e.touches[0].clientY + e.touches[1].clientY) / 2
-          };
-          zoomEndTime = null;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const newDistance = Math.hypot(dx, dy);
+      const delta = newDistance - initialDistance;
+      initialDistance = newDistance;
 
-        } else if (e.touches.length === 1) {
-          const sinceZoom = (zoomEndTime !== null) ? (performance.now() - zoomEndTime) : Infinity;
-          if (sinceZoom >= PAN_RESUME_DELAY) {
-            lastX     = e.touches[0].clientX;
-            lastY     = e.touches[0].clientY;
-            isPanning = true;
-            canvas.style.cursor = "grabbing";
-          }
-        }
-      }, { passive: true });
+      const fakeWheel = new WheelEvent("wheel", {
+        deltaY: delta,
+        clientX: initialCenter.x,
+        clientY: initialCenter.y,
+        bubbles: true,
+        cancelable: true
+      });
+      canvas.dispatchEvent(fakeWheel);
+    } else if (e.touches.length === 1 && isPanning) {
+      const t = e.touches[0];
+      const fakeMove = new MouseEvent("mousemove", {
+        clientX: t.clientX,
+        clientY: t.clientY,
+        bubbles: true,
+        cancelable: true
+      });
+      canvas.dispatchEvent(fakeMove);
+    }
+  }, { passive: true });
 
-      canvas.addEventListener("touchmove", (e) => {
-        if (e.touches.length === 2 && initialDistance !== null) {
-          const dx          = e.touches[0].clientX - e.touches[1].clientX;
-          const dy          = e.touches[0].clientY - e.touches[1].clientY;
-          const newDistance = Math.hypot(dx, dy);
-          const delta       = newDistance - initialDistance;
-          initialDistance   = newDistance;
-          canvas.dispatchEvent(new WheelEvent("wheel", {
-            deltaY: delta, clientX: initialCenter.x, clientY: initialCenter.y,
-            bubbles: true, cancelable: true
-          }));
+  canvas.addEventListener("touchend", (e) => {
+    if (e.touches.length === 0) {
+      isPanning = false;
+      canvas.style.cursor = "grab";
+      initialDistance = null;
+      initialCenter = null;
+      canvas._2fingerStart = null;
+    }
+  }, { passive: true });
+})();
+// === END Touch Relay ===
 
-        } else if (e.touches.length === 1 && isPanning) {
-          canvas.dispatchEvent(new MouseEvent("mousemove", {
-            clientX: e.touches[0].clientX, clientY: e.touches[0].clientY,
-            bubbles: true, cancelable: true
-          }));
-        }
-      }, { passive: true });
-
-      canvas.addEventListener("touchend", (e) => {
-        if (lastTouchCount === 2 && e.touches.length === 1) {
-          isPanning       = false;
-          zoomEndTime     = performance.now();
-          initialDistance = null;
-          initialCenter   = null;
-          lastX = e.touches[0].clientX;
-          lastY = e.touches[0].clientY;
-        }
-        if (e.touches.length === 0) {
-          isPanning           = false;
-          canvas.style.cursor = "grab";
-          initialDistance     = null;
-          initialCenter       = null;
-          if (lastTouchCount >= 2) zoomEndTime = performance.now();
-        }
-        lastTouchCount = e.touches.length;
-      }, { passive: true });
-    })();
-    // === End Touch Relay =======================================================
-
-    // === HUD Enter: navigate to pasted coordinates ============================
-    canvas.hud.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      canvas.config(canvas.hud.value || canvas.hud.textContent);
-    });
-    // ==========================================================================
 
   </script>
 </body>
