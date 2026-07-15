@@ -1,2 +1,25 @@
-
-@[ "/assets/index.css" ];
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Xacra PBO (Reg.Pnd)</title>
+        <style>
+            @[ "/assets/index.css" ];
+        </style>
+        <script defer >
+            @[ "/assets/status.mjs" ];
+            window.Status = new Widget( "status-sensor" );
+            Status.invoke( );
+        </script>
+        <script type="module" src="/assets/index.mjs" defer ></script>
+    </head>
+    <body>
+        <div id="offscreen" class="absolute secluded"></div>
+        <iframe id="mandel" class="absolute spanFull" src=""></iframe>
+        <div id="overlay" class="relative spanFull">
+            <div id="gfx" class="absolute spanFull"></div>
+            <div id="browse" class="relative spanFull"></div>
+        </div>
+    </body>
+</html>
