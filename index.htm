@@ -8,15 +8,17 @@
             @[ "/assets/index.css" ];
         </style>
         <script type="module" src="/assets/index.mjs" defer ></script>
+<!---
         <script defer >
             @[ "/assets/status.mjs" ];
             window.Status = new Widget( "status-sensor" );
             Status.invoke( );
         </script>
+-->
     </head>
     <body>
         <div id="offscreen" class="absolute secluded"></div>
-        <iframe id="mandel" class="absolute spanFull" src=""></iframe>
+        <iframe id="mandel" class="absolute spanFull" src="/assets/mandel.htm"></iframe>
         <div id="overlay" class="relative spanFull">
             <div id="gfx" class="absolute spanFull"></div>
             <div id="browse" class="relative spanFull"></div>
